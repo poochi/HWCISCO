@@ -1,7 +1,7 @@
 /*Notes & Limitations at end*/
 #include <stdio.h>
-#include "tower.h"
 #include "share.h"
+#include "tower.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -9,7 +9,7 @@ Tower T[MAX_TOWERS];
 int currenttowers=0; //0 indexed
 
 /*propogate_algo.cpp*/
-extern void notify_controller(int CMD,void* a, void* b, void* c);
+extern void notify_controller(int CMD,INFORMATION* info);
 
 
 
@@ -22,16 +22,6 @@ if(T[src].msgtype !=UNREACHABLE_TARGET && T[dest].msgtype !=UNREACHABLE_TARGET) 
 assert(T[dest].msgtype == UNREACHABLE_TARGET);
 printf("DUDE ARE YOU SERIOUS CANT REACH SRC??");
 assert(0);
-}
-
-
-
-void init_towers(){
-notify_controller(INIT,NULL, NULL, NULL);
-}
-
-void deinit_towers(){
-notify_controller(DEINIT,NULL, NULL, NULL);
 }
 
 
@@ -51,8 +41,9 @@ for(int i=0;i<=currenttowers;i++) {
 void senddata(int src, int dest, char message[]) {
 void* payload =  malloc(MAXIMUM_MESSAGE_SIZE);
 memcpy(message,payload,strlen(message));
-notify_controller(PREPARE_TO_SEND,&src, &dest, NULL);
-notify_controller(SENDDATA,&src, &dest, payload);
+/*To do*/
+//notify_controller(SENDDATA,&src, &dest, payload);
+
 }
 
 /*Immediate vicinity not more than 10 towers we allocate memory for this only*/
@@ -60,7 +51,13 @@ void add_tower_to_network(Tower t, int index) {
 memcpy(&t,&T[index],sizeof(Tower));
 void* pers = malloc(MAX_CONTROLLER_MEMORY);
 T[index].algoinfo = pers;
-notify_controller(ADDTOWER,pers, (void*) &(T[index].f), (void*)T[index].freqused );
+
+INFORMATION info;
+info.pers = pers;
+info.freq = &T[index].f[0];
+info.freqused = &T[index].freqused;
+
+notify_controller(ADDTOWER,&info);
 }
 
 /*this is silent no notification to controller happens here*/
@@ -78,21 +75,26 @@ assert(index<=MAX_TOWERS && index>=0);
 
 void recieve(int to,int freq, void* message) {
 assert(to<=MAX_TOWERS && to>=0);
-/*check may be unnecessary in serial tx case*/
+/*check may be unnecessary in serial tx case
 if(T[to].state != TOWER_SEND) {
 	printf("NOT IN A POSITION TO RECIEVE\n");
 	return;
-}
+}*/
 int type;
 
+INFORMATION info;
+info.pers = T[to].algoinfo;
+info.message = message;
+info.from = &to;
 
-notify_controller(MSG_RECIEVED,(void*)&to,(void*)&freq,message);
-//DO NOT CHANGE IF MESSAGE TYPE IN NOT DATA
-notify_controller(TYPE_OF_MESSAGE_RECIEVED,(void*) &type,(void*) &(T[to].data[0]),message);
-T[to].msgtype = type;
-//if(T[to].msgtype = UNREACHABLE_TARGET)
-	
-	
+notify_controller(MSG_RECIEVED,&info);
+}
+
+// send a broadcast message to all Nearby towers 
+void send_broadcast(void* message, int freq) {
+for(int i=0;i<MAX_TOWERS;i++){
+	recieve(i,freq,message);
+}
 }
 
 
