@@ -6,7 +6,7 @@ to design and implement <br>
 Network discovery protocols <br>
 Routing protocol (optional) <br>
 Protocols to monitor health of the network <br>
-In a wireless network
+for a wireless network
 
 ##      Motivation
 ------------------------------------------------
@@ -17,16 +17,18 @@ To brush up my knowledge in networking :-)
 ---------------------------------------------------
 
 Currently,
-The Repo has contains a functional 'Network Discovery' protocol.
+It has a functional 'Network Discovery' protocol.
 
 ##      How to use
 -----------------------------------------------------
 Run<br>
 make -f makefile all <br>
+chmod 777 . <br>
 ./simulator.out<br>
 <br>
 or use codeblocks to open the project :-)
 
+PS: make sure msgget etc., succseeds
 
 ##      Project details
 -----------------------------------------------------
