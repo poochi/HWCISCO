@@ -1,4 +1,0 @@
-3
-TOWERUP 1
-TOWERDOWN 1
-SENDDATA 1 2 adrenalinrush
