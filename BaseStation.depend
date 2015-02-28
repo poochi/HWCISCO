@@ -1,0 +1,44 @@
+# depslib dependency file v1.0
+1425129661 source:/home/poochi/Desktop/CiscoHack/BTS/BaseStation/main.cpp
+	<sys/stat.h>
+	<fcntl.h>
+	<unistd.h>
+	<sys/types.h>
+	<signal.h>
+	<stdio.h>
+	<assert.h>
+	<stdlib.h>
+	<string.h>
+	<iostream>
+	<sys/time.h>
+	<sys/wait.h>
+	"tower.h"
+
+1425017580 source:/home/poochi/Desktop/CiscoHack/BTS/BaseStation/towers.cpp
+	<sys/stat.h>
+	<sys/types.h>
+	<sys/wait.h>
+	<sys/ipc.h>
+	<sys/msg.h>
+	<sys/time.h>
+	<sys/types.h>
+	<sys/time.h>
+	<unistd.h>
+	<fcntl.h>
+	<signal.h>
+	<stdio.h>
+	<string.h>
+	<stdlib.h>
+	<errno.h>
+	<assert.h>
+	"tower.h"
+	"network.h"
+
+1425105978 /home/poochi/Desktop/CiscoHack/BTS/BaseStation/include/tower.h
+	<stdio.h>
+	<assert.h>
+	<vector>
+	<unistd.h>
+
+1424919344 /home/poochi/Desktop/CiscoHack/BTS/BaseStation/include/network.h
+
