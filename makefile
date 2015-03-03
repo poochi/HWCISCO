@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-c -Wall
+CFLAGS=-c -Wall 
 CFLAGS += -Iinclude/
 LDFLAGS=
 SOURCES= main.cpp towers.cpp

@@ -52,7 +52,10 @@ void makedscoverypacket(Tower* me, message_buf* packet)
     assert(packet->message.sendersInboxId == me->myInboxId);
     packet->message.locx = me->locx;
     packet->message.locy = me->locy;
-    LOGD("sending discovery packet %d  %d at location (%d,%d)\n",packet->message.sendersInboxId,sizeof(packet->message)-sizeof(long),packet->message.locx,packet->message.locy);
+    LOGD("sending discovery packet %d  %d at location (%d,%d)\n",
+        packet->message.sendersInboxId,
+        sizeof(packet->message)-sizeof(long),packet->message.locx,
+        packet->message.locy);
 
 }
 
@@ -71,11 +74,13 @@ void sendpacket(message_buf sbuf,int rxid)
     if(msgsnd(rxid,&sbuf,sizeof(sbuf)-sizeof(long),IPC_NOWAIT)<0)
     {
 
-        LOGD("message sending failed :-( %d,%ld %d %d \n",rxid,sbuf.messagetype,sizeof(sbuf)-sizeof(long),errno);
+        LOGD("message sending failed :-( %d,%ld %d %d \n",rxid,
+            sbuf.messagetype,sizeof(sbuf)-sizeof(long),errno);
         perror("msgsnd");
     }
     else
-        LOGI("Message sent to (%d) inbox from (%d)!. Im at (%d,%d) :-) \n",rxid,sbuf.message.sendersInboxId,sbuf.message.locx,sbuf.message.locy)
+        LOGI("Message sent to (%d) inbox from (%d)!. Im at (%d,%d) :-) \n",
+            rxid,sbuf.message.sendersInboxId,sbuf.message.locx,sbuf.message.locy)
     }
 
 
@@ -86,8 +91,11 @@ void readmsg(message_buf* packet, Tower* me)
     case DISCOVERY:
     {
 
-        int dis = abs(packet->message.locx - me->locx) + abs(packet->message.locy - me->locy);
-        LOGI("Discovery packet recieved from (%d) inbox to (%d)!. He is at (%d,%d) :-) \n",packet->message.sendersInboxId, me->myInboxId, packet->message.locx,packet->message.locy);
+        int dis = abs(packet->message.locx - me->locx) +
+            abs(packet->message.locy - me->locy);
+        LOGI("Discovery packet recieved from (%d) inbox to  \
+            (%d)!. He is at (%d,%d) :-) \n",packet->message.sendersInboxId,
+            me->myInboxId, packet->message.locx,packet->message.locy);
 
         //mahattan distance <= 10 neighbours
         if(dis<=10 )
@@ -135,12 +143,12 @@ void Tower_begin_function(int cnt,Tower* me)
     if ((msqid = msgget(msgid[towercount-1], 0644)) < 0)
     {
         perror("msgget");
-        assert(0);
+        exit(1);
     }
     message_buf rbuf;
     rbuf.messagetype = -1;
     /*poll for sometime ...  look for better alternative*/
-    LOGI("Wait for 5secs Let others read and respond :-)")
+    LOGI("Wait for 5secs Let others read and respond :-)\n")
     sleep(5);
 
     while(1)
@@ -155,7 +163,7 @@ void Tower_begin_function(int cnt,Tower* me)
             else
             {
                 perror("msgrcv problem");
-                assert(0);
+                exit(1);
             }
 
         }
@@ -187,7 +195,7 @@ void Tower_begin_function(int cnt,Tower* me)
             else
             {
                 perror("msgrcv problem");
-                assert(0);
+                exit(1);
             }
 
         }
@@ -208,7 +216,7 @@ void Tower_init(Tower* me)
     {
         perror("msgget failed");
         LOGD("init failed :-( .... \n")
-        assert(0);
+        exit(1);
 
     }
     else
@@ -224,12 +232,12 @@ void Tower_init(Tower* me)
         if((msqid = msgget(msgid[i],msgflg))<=0)
         {
             perror("msgget failed");
-            assert(0);
+            exit(1);
         }
         LOGD("(key,msqid) of friends (%d,%d) \n",msgid[i],msqid);
         makedscoverypacket(me,&sbuf);
         sendpacket(sbuf,msqid);
-        //assert(0);
+
     }
     if(towercount==1)
     {
@@ -250,11 +258,14 @@ void create_tower_process(Tower tower)
     /*create here*/
     pid_t cpid= fork();
     int cnt = 0;
-    towerprocesses[towercount++] = cpid; /*This variable makes sense in parent process*/
+    towerprocesses[towercount] = cpid; /*This variable makes sense in parent process*/
+    towercount++;
+
     switch(cpid)
     {
     case 0:
     {
+
         LOGD("New tower process created with pid %ld\n",(long)getpid());
         Tower_init(&tower);
         Tower_begin_function(cnt,&tower); /*this is an*/
@@ -271,6 +282,7 @@ void create_tower_process(Tower tower)
 
     default:
         LOGD("Im the parent/ main process \n");
+
 
     }
 

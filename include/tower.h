@@ -39,7 +39,7 @@ Tower() {
 
 };
 
-//#define DEBUG
+#define DEBUG
 
 #define LOGI(x,...) {\
 printf("%ld ::"x,(long)getpid(),##__VA_ARGS__); \
