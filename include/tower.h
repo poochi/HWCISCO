@@ -2,42 +2,36 @@
 #include <assert.h>
 #include <vector>
 #include <unistd.h>
+#include <>
 using namespace std;
 
-#define MAX_TOWERS 10
+#define MAX_TOWERS              10
+#define MAX_MESSAGEID           8888
 
-#define TOWER_RECIEVE 0
-#define TOWER_SEND 1
-#define TOWER_INACTIVE 2
-#define TOWER_MALFUNCTION 4
-#define MAX_FREQ 5
-
-#define FREQ_VALUE 100
-
+/*Internal tower state :- Algorithm based*/
+#define TOWER_PREJOIN		0
+#define TOWER_JOINED		1
 
 struct networkinfo {
-vector<int> neighbourInboxId;
-vector<int> neighbour_reliablity; //time weighted measure
+/*contains reliability*/
+double routingtable[MAX_TOWERS][MAX_TOWERS]; 
+/*should not be used except for initial broadcast*/
+int alltowers[MAX_TOWERS];
 };
 
-/*Tower Objects*/
-/*Property of the tower is updated based on Algorithm*/
+
 struct Tower {
-int locx,locy;
-int state;
-int f[MAX_FREQ];
-int freqused;
-networkinfo algoinfo; //privatised to other guy
-int myInboxId; // message queue key
-
-Tower (int st) {
-assert(st == TOWER_RECIEVE || st==TOWER_SEND);
-state = st;
-}
-Tower() {
-}
-
+	int locx,locy;
+	int state;
+	networkinfo algoinfo; 
+	sqlite3 *messagedb;
+	/*message queue key*/
+	int myInboxId;
+	int myId; 
+	int message_no;
 };
+
+
 
 #define DEBUG
 
@@ -48,7 +42,11 @@ printf("%ld ::"x,(long)getpid(),##__VA_ARGS__); \
 #ifdef DEBUG
 
 #define LOGD(x,...) { \
-printf("%ld ::"x,(long)getpid(),##__VA_ARGS__); \
+char logds[20]; \
+sprintf(logds,"%lu", (long)getpid()); \
+FILE* logdfp = fopen(logds,"a+"); \
+fprintf(logdfp,"%ld ::"x,(long)getpid(),##__VA_ARGS__); \
+fclose(logdfp); \
 }
 #else
 #define LOGD(x,...) { \

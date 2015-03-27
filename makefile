@@ -1,8 +1,8 @@
 CC=g++
 CFLAGS=-c -Wall 
-CFLAGS += -Iinclude/
-LDFLAGS=
-SOURCES= main.cpp towers.cpp
+CFLAGS += -Iinclude/ 
+LDFLAGS= -lsqlite3
+SOURCES= main.cpp towers.cpp routing.cpp send.cpp read.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=simulator
 

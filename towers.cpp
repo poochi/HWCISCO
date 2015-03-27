@@ -15,10 +15,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "tower.h"
-#include "network.h"
-
-
+#include "include/tower.h"
+#include "include/network.h"
+#include "include/protocol.h"
 
 
 /*Tower processes related*/
@@ -27,190 +26,58 @@ extern key_t msgid[MAX_TOWERS];
 extern int towercount;
 extern pid_t mainprocessid;
 
+/*routing related*/
+extern void networkoperations(Tower *me);
 
-struct  message_buf
-{
-    long messagetype;
-    struct msg
-    {
-        char ack; // to have read reciept
-        int message_id;
-        int locx;
-        int locy;
-        int sendersInboxId;
-    } message;
+/*Debug related*/
+extern void print_networkinfo(Tower * me);
 
-} ;
-
-
-void makedscoverypacket(Tower* me, message_buf* packet)
-{
-
-    packet->messagetype = DISCOVERY;
-    packet->message.ack = 0;
-    packet->message.sendersInboxId = me->myInboxId;
-    assert(packet->message.sendersInboxId == me->myInboxId);
-    packet->message.locx = me->locx;
-    packet->message.locy = me->locy;
-    LOGD("sending discovery packet %d  %d at location (%d,%d)\n",
-        packet->message.sendersInboxId,
-        sizeof(packet->message)-sizeof(long),packet->message.locx,
-        packet->message.locy);
-
-}
-
-void print_networkinfo(Tower * me)
-{
-    printf("\n");
-    LOGI("My Inbox (%d) Friend's \n",me->myInboxId)
-    for(unsigned int i=0; i<me->algoinfo.neighbourInboxId.size(); i++)
-        LOGI("%d\n", me->algoinfo.neighbourInboxId[i]);
-    printf("\n\n");
-}
-
-void sendpacket(message_buf sbuf,int rxid)
-{
-
-    if(msgsnd(rxid,&sbuf,sizeof(sbuf)-sizeof(long),IPC_NOWAIT)<0)
-    {
-
-        LOGD("message sending failed :-( %d,%ld %d %d \n",rxid,
-            sbuf.messagetype,sizeof(sbuf)-sizeof(long),errno);
-        perror("msgsnd");
-    }
-    else
-        LOGI("Message sent to (%d) inbox from (%d)!. Im at (%d,%d) :-) \n",
-            rxid,sbuf.message.sendersInboxId,sbuf.message.locx,sbuf.message.locy)
-    }
-
-
-void readmsg(message_buf* packet, Tower* me)
-{
-    switch(packet->messagetype)
-    {
-    case DISCOVERY:
-    {
-
-        int dis = abs(packet->message.locx - me->locx) +
-            abs(packet->message.locy - me->locy);
-        LOGI("Discovery packet recieved from (%d) inbox to  \
-            (%d)!. He is at (%d,%d) :-) \n",packet->message.sendersInboxId,
-            me->myInboxId, packet->message.locx,packet->message.locy);
-
-        //mahattan distance <= 10 neighbours
-        if(dis<=10 )
-        {
-            me->algoinfo.neighbourInboxId.push_back(packet->message.sendersInboxId);
-            if(packet->message.ack!=0)
-            {
-                LOGI("Ack packet dont respond, just update tables :) \n")
-                break;
-            }
-            /*making return discovery ack packet*/
-            message_buf returnpacket;
-
-            returnpacket.messagetype = DISCOVERY;
-            returnpacket.message.ack = 1;
-            returnpacket.message.locx = me->locx;
-            returnpacket.message.locy = me->locy;
-            returnpacket.message.sendersInboxId = me->myInboxId;
-            LOGI("Sending ACK packet, He is a friend :)\n")
-            sendpacket(returnpacket,packet->message.sendersInboxId);
-        }
-
-        break;
-    }
-
-    default:
-        LOGD("Packet type unrecognized\n");
-
-    }
-
-
-}
-
-/* Create a message q
-while(1)
-Read packet & do something
-*/
-void Tower_begin_function(int cnt,Tower* me)
+void Tower_run(Tower* me)
 {
     int msqid = 0;
-
-    assert(towercount>0);
-
-
-    if ((msqid = msgget(msgid[towercount-1], 0644)) < 0)
-    {
-        perror("msgget");
-        exit(1);
-    }
-    message_buf rbuf;
-    rbuf.messagetype = -1;
-    /*poll for sometime ...  look for better alternative*/
-    LOGI("Wait for 5secs Let others read and respond :-)\n")
-    sleep(5);
-
+    assert(towercount>0 && towercount <MAX_TOWERS);
+	assert(me->state == JOINED);
+	LOGD("Tower Begining to function .... \n");
     while(1)
     {
-        if(msgrcv(msqid,&rbuf,sizeof(rbuf)-sizeof(long),0,IPC_NOWAIT)<0)
-        {
-            if(errno == ENOMSG)
-            {
-                //LOGD("No message recieved \n")
-                break;
-            }
-            else
-            {
-                perror("msgrcv problem");
-                exit(1);
-            }
-
-        }
-        else
-        {
-            readmsg(&rbuf,me);
-
-        }
-
-    }
-
-    LOGI("Unreliable may not have captured all friends ...")
-    print_networkinfo(me);
-
-    /*stability signal to parent only*/
-    kill(mainprocessid,SIGUSR1);
-
-    LOGD("Tower running ... Reading mails ... :-) \n")
-    while(1)
-    {
-        /*Dont wait just read whats there */
-        if(msgrcv(msqid,&rbuf,sizeof(rbuf)-sizeof(long),0,IPC_NOWAIT)<0)
-        {
-            if(errno == ENOMSG)
-            {
-                //LOGD("No message recieved \n")
-
-            }
-            else
-            {
-                perror("msgrcv problem");
-                exit(1);
-            }
-
-        }
-        else
-            readmsg(&rbuf,me);
+        networkoperations(me);
     }
 }
 
-/*Send discovery message to all*/
 void Tower_init(Tower* me)
 {
-    LOGI("Tower init ... Creating inbox for tower %d  and discovering neighbours\n",towercount-1);
-    int msgflg = IPC_CREAT|0644;
-    int msqid;
-    message_buf sbuf;
+	int msgflg = IPC_CREAT|0644;
+	/*Others can read only I can write and read and create!*/
+
+    LOGI("Tower init ... Creating inbox for tower %d and memorizing Inbox of towers created till now (for sending hello broadcast only) \n",towercount-1);
+
+    /*init others*/
+    me->myId = towercount-1;
+    me->time = 0;    
+
+    char temp[100];
+    sprintf(a,"%l.msgdb",(long)getpid());
+    a[99] = 0;
+    int rt = sqlite3_open(a, &me->db);
+    if(rt) {
+        LOGI("Unable to Open DB file\n");
+        sqlite3_close(me->db);
+        exit(0);
+    }
+    /*MSGTYPE,MSG,RESPONSE,TIMETOCLEAR*/
+    sprintf(a,"CREATE TABLE MESSAGE (message_id int, msgtype int, msg varchar(%d), response int, TTC int);",MAXPROTOCOLSIZE);
+    rt = sqlite3_exec(db, a
+        , callback, 0, &zErrMsg);
+    if( rc!=SQLITE_OK ){
+      LOGI("SQL error: %s\n", zErrMsg);
+      sqlite3_free(zErrMsg);
+    }
+
+    memset(me->algoinfo.alltowers,0,sizeof(me->algoinfo.alltowers));
+    for(int i=0; i<MAX_TOWERS; i++)
+        for(int j=0; j<MAX_TOWERS; j++)
+            me->algoinfo.routingtable[i][j] = 0.0;
+    me->message_no = 0;
 
     if((me->myInboxId = msgget(msgid[towercount-1],msgflg))<=0)
     {
@@ -220,34 +87,77 @@ void Tower_init(Tower* me)
 
     }
     else
-        LOGD(" created .... msgid[towercount-1] %d , my message queue %d",msgid[towercount-1],me->myInboxId)
-
+        LOGD(" Created Inbox from msgid[towercount-1] %d , my InboxId %d",msgid[towercount-1],me->myInboxId)
 
 
 
     msgflg = 0644;
-    for(int i=0; i<towercount-1; i++)
-    {
+	/*I can write and read other queue (permisson to be changed)*/
+	msgflg = 0244;
+	/*I should not be able to read the queue; other processes I dont care! */
 
-        if((msqid = msgget(msgid[i],msgflg))<=0)
+		message_join_buf packet , rcv;
+        packet.messagetype = JOIN;
+		packet.join.message_id = internalhash(me->message_no, packet.messagetype, packet.join.senderID);
+        packet.join.ack = 0;
+        packet.join.sendersInboxId = me->myInboxId;
+        packet.join.locx = me->locx;
+        packet.join.locy = me->locy;
+		packet.join.senderID = packet.join.OriginID = me->myID;
+		me->message_no++;
+
+	for(int i=0; i<towercount-1; i++)
+    {
+        if((me->algoinfo.alltowers[i] = msgget(msgid[i],msgflg))<=0)
         {
-            perror("msgget failed");
+			perror("msgget failed");
+            LOGD("msgget failed")
             exit(1);
         }
-        LOGD("(key,msqid) of friends (%d,%d) \n",msgid[i],msqid);
-        makedscoverypacket(me,&sbuf);
-        sendpacket(sbuf,msqid);
 
+		sendJoinpacket(packet,me->algoinfo.alltowers[i]);
     }
-    if(towercount==1)
-    {
-        LOGD("First tower so im not writing \n")
-    }
-    else
-    {
-        LOGD("written to all neighbours \n")
-    }
+	/*wait till others write*/
+	LOGD("sleeping for %d secs hope all other processes run now !! \n",max(towercount*3,10));
+	sleep(max(towercount*3,10));
 
+	for(int i=0;i<MAX_TOWERS;i++) {
+		if(readJoinpacket(&rcv,me->myInboxId)>0) {
+			assert(rcv.ack == 1 && rcv.join.message_id == packet.join.message_id)
+			me->algoinfo.neighbours[packet->message.senderID] = packet->message.sendersInboxId;
+			mergetable(rcv.table,me);
+		}
+	}
+	/*MakeNetworkTableUpdatePacket*/
+	message_nwt_buf nwtpacket;
+	nwtpacket.messagetype = NWTABLE;
+	nwtpacket.nwt.message_id = internalhash(me->message_no, packet.messagetype, packet.nwt.OriginID);
+	nwtpacket.nwt.ack = 0;
+	nwtpacket.nwt.sendersInboxId = me->myInboxId;
+	nwtpacket.nwt.senderID =  packet.nwt.OriginID = me->myID;
+	memcpy(nwtpacket.nwt.table,me->algoinfo.routingtable,sizeof(nwtpacket.nwt.table));
+	for(int i=0;i<MAX_TOWERS;i++) {
+		if(nwtpacket.nwt.table[me->myID][i]>0) {
+				assert(me->algoinfo.neighbours[i] !=0);
+				sendTableUpdatepacket(&nwtpacket, me->algoinfo.neighbours[i]);
+                /*Expecting an ACK; Save the message in DB for retransmission*/
+				updatePendingAck(me, nwtpacket.nwt.message_id,(void*) &nwtpacket, sizeof(nwtpacket));
+                sprintf(a,"INSERT INTO MESSAGE (message_id, msgtype, msg, response, TTC) VALUES(%d, '%s' , '%s', '%s', '%s');"
+                    ,nwtpacket.nwt.message_id,nwtpacke.messagetype,,"temp2","Chn112");
+                rt = sqlite3_exec(db, a
+                    , callback, 0, &zErrMsg);
+                if( rc!=SQLITE_OK ){
+                  fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                  sqlite3_free(zErrMsg);
+                }
+		}
+	}
+	while(retry(me));
+	LOGD(" sleeping .. let the update propogate ------ %d",towercount*AVGRTT_PER_TOWER*5)
+	sleep(towercount*AVGRTT_PER_TOWER*5);
+	LOGD("Tower initialized . Network is stable ... can start functioning \n");
+	/*stability signal to parent only*/
+    kill(mainprocessid,SIGUSR1);
 }
 
 
@@ -258,19 +168,16 @@ void create_tower_process(Tower tower)
     /*create here*/
     pid_t cpid= fork();
     int cnt = 0;
-    towerprocesses[towercount] = cpid; /*This variable makes sense in parent process*/
-    towercount++;
+    towerprocesses[towercount++] = cpid; /*This variable makes sense in parent process*/
 
     switch(cpid)
     {
     case 0:
     {
-
         LOGD("New tower process created with pid %ld\n",(long)getpid());
         Tower_init(&tower);
-        Tower_begin_function(cnt,&tower); /*this is an*/
+        Tower_run(&tower); /*this is an*/
         break;
-
     }
 
     case -1:
