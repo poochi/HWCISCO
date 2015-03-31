@@ -15,7 +15,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 #include "tower.h"
 
 extern void create_tower_process(Tower tower);
@@ -64,59 +63,15 @@ static void close_message_queues()
 int main()
 {
 
-    FILE* towersdata = fopen("testinput/tower.txt","r");
     Tower temptower[MAX_TOWERS];
     memset(temptower,0,sizeof(Tower));
     int maxtowers = 0;
-    assert(towersdata!=0);
 
     /*this signal is risen when the network reaches stability after
     every operation*/
     signal (SIGUSR1, stability);
 
     assert(towersdata!=0);
-
-    /*read towers in network*/
-    while(!feof(towersdata))
-    {
-        char temp[200];
-        fscanf(towersdata,"%s",temp);
-
-        int s = strlen(temp);
-        int i;
-        for(i=0; i<s; i++)
-            if(temp[i]==':')
-                break;
-        temp[i++]='\0';
-        int index = atoi(&temp[1]);
-        int cnt = 0,pre;
-        index--;
-        assert(index<MAX_TOWERS);
-
-        for(pre=i+1,cnt=0; i<s; i++)
-        {
-            //cout<<temp[i]<<endl;
-            if(temp[i]==',')
-            {
-                temp[i++]='\0';
-                int v = atoi(&temp[pre]);
-                temptower[index].f[cnt++] = v;
-                assert(v<=FREQ_VALUE);
-                assert(cnt<=MAX_FREQ);
-                pre = i+1;
-
-            }
-        }
-
-        int v = atoi(&temp[pre]);
-        temptower[index].f[cnt++] = v;
-        temptower[index].freqused = cnt;
-
-        assert(cnt<=MAX_FREQ);
-        assert(v<=FREQ_VALUE);
-        maxtowers = max(maxtowers,index);
-    }
-    fclose(towersdata);
 
     mainprocessid = getpid();
     signal (SIGCHLD, Tower_reaper);
@@ -125,8 +80,8 @@ int main()
 
     /*from stdin*/
     freopen("testinput/input.txt","r",stdin);
-
-    for(int i=0,x,y; i<=maxtowers; i++)
+    scanf("%d",&maxtowers);
+    for(int i=0,x,y; i<maxtowers; i++)
     {
         scanf("%d %d",&x,&y);
         assert(x>=0 && y>=0);
@@ -135,15 +90,15 @@ int main()
     }
 
     /*create and tower processes one by one*/
-    for(int i=0; i<=maxtowers; i++)
+    for(int i=0; i<maxtowers; i++)
     {
-        /*key is to create message queue for each tower process*/
-        /*should clean up message queue also TODO*/
+        /*Create message queue for each tower process*/    
         msgid[i] = (getpid()+ i*39)%10000;
         LOGD("Locations of towers :: %d %d \n",temptower[i].locx,
              temptower[i].locy)
         create_tower_process(temptower[i]);
-        pause(); //waiting for stability in network ; you need this ??
+        /*Waiting for Stability */
+        pause(); 
     }
 
     LOGI("Sleeping for 100s time  use cntrl+c to quit :-) \n")
@@ -183,7 +138,5 @@ void cleanup(int signal)
         kill(mainprocessid,SIGINT);
 
     }
-
-    /*Terminate*/
     exit(0);
 }

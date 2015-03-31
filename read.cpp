@@ -26,8 +26,13 @@
 /*To do*/
 /*check and discard message based on timestamp*/
 
+
 int internalhash(int msgid, int type, int origin) {
-return msgid<<8 | type<<5 | origin ;
+return msgid ;
+}
+
+int extractmsgid(int id) {
+    return id;
 }
 
 int readTableUpdatepacket(message_nwt_buf *rbuf,int msqid) {

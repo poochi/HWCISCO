@@ -28,7 +28,6 @@
 /*recv join pkt*/
 /*recv join pkt*/
 
-
 /*Acknowledge / Fresh */
 void sendTableUpdatepacket(message_nwt_buf* sbuf,int rxid)
 {
@@ -54,7 +53,7 @@ void sendReliabilitypacket(message_rel_buf* sbuf,int rxid) {
         perror("msgsnd");
     }
     else {
-        LOGI("Message sent to (%d) inbox from (%d)!. Im at (%d,%d) :-) \n",
+        LOGI("Message sent to (%d) inbox from (%d)!. \n",
              rxid,sbuf->rel.sendersInboxId)
 	}
 }
@@ -68,7 +67,8 @@ void sendJoinpacket(message_join_buf* sbuf,int rxid) {
         perror("msgsnd");
     }
     else {
-        LOGI("Message sent to (%d) inbox from (%d)!. Im at (%d,%d) :-) \n",
+        LOGI("Message sent to (%d) inbox from (%d).:-) \n",
              rxid,sbuf->join.sendersInboxId)
 	}
 }
+

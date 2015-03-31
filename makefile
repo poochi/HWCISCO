@@ -2,21 +2,21 @@ CC=g++
 CFLAGS=-c -Wall 
 CFLAGS += -Iinclude/ 
 LDFLAGS= -lsqlite3
-SOURCES= main.cpp towers.cpp routing.cpp send.cpp read.cpp
+SOURCES= main.cpp towers.cpp routing.cpp send.cpp read.cpp database.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=simulator
 
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm $(OBJECTS)
-	rm $(EXECUTABLE)
+	rm -f $(OBJECTS)
+	rm -f $(EXECUTABLE)
 
 
 

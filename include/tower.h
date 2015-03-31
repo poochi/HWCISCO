@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <vector>
 #include <unistd.h>
-#include <>
+#include "sqlite3.h"
 using namespace std;
 
 #define MAX_TOWERS              10
@@ -15,6 +15,8 @@ using namespace std;
 struct networkinfo {
 /*contains reliability*/
 double routingtable[MAX_TOWERS][MAX_TOWERS]; 
+int neighbours[MAX_TOWERS];
+
 /*should not be used except for initial broadcast*/
 int alltowers[MAX_TOWERS];
 };
@@ -27,8 +29,9 @@ struct Tower {
 	sqlite3 *messagedb;
 	/*message queue key*/
 	int myInboxId;
-	int myId; 
+	int myID; 
 	int message_no;
+	int lastrcvd[MAX_TOWERS];
 };
 
 

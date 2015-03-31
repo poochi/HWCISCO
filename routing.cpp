@@ -20,76 +20,84 @@
 #include "include/protocol.h"
 
 /*utility.cpp*/
-
 extern int readTableUpdatepacket(message_nwt_buf *rbuf,int msqid);
 extern int readReliabilitypacket(message_rel_buf *rbuf,int msqid);
 extern int readJoinpacket(message_join_buf *rbuf,int msqid);
+
+extern void updatePendingAck(Tower* me, int message_id,void* pkt, int size);
+extern void opendb(Tower* me);
+extern void closedb(Tower* me);
+extern int internalhash(int msgid, int type, int origin);
+extern int readTableUpdatepacket(message_nwt_buf *rbuf,int msqid);
+extern int readJoinpacket(message_join_buf *rbuf,int msqid);
+extern int readReliabilitypacket(message_rel_buf *rbuf,int msqid);
+
+extern void sendTableUpdatepacket(message_nwt_buf* sbuf,int rxid);
+extern void sendJoinpacket(message_join_buf* sbuf,int rxid);
+extern void sendReliabilitypacket(message_rel_buf* sbuf,int rxid);
+extern void mergetable(double rcvdtable[MAX_TOWERS][MAX_TOWERS],Tower* me,int senderID);
+
 
 double absolute(double x){
 	return x>0?x:-x;
 }
 
-
+extern int extractmsgid(int id);
 
 void networkoperations(Tower *me)
 {
-    assert(packet!=0 && me !=0);	
-	assert(me->state == JOINED);
+
+	assert(me->state == TOWER_JOINED);
 	
-	message_nwt_buf nwt;
-	message_rel_buf rel;
+	message_nwt_buf nwt;	
 	message_join_buf join;
 	LOGD("Performing Network Operations \n");
 	
-	readTableUpdatepacket(&nwt,me->myInboxID);
+	readTableUpdatepacket(&nwt,me->myInboxId);
 	if(nwt.messagetype == NWTABLE) {
-		if(nwt.nwt.ack == 1)
-			messagerepo(me,nwt->,REMOVE_PENDING_ACK);
-		else{		
-			if(messagerepo(me,,ISNEW)) {			
+		if(nwt.nwt.ack != 1) {
+			if(me->lastrcvd[nwt.nwt.senderID]> extractmsgid(nwt.nwt.message_id)) {
+				me->lastrcvd[nwt.nwt.senderID]  = extractmsgid(nwt.nwt.message_id);
 				memcpy(me->algoinfo.routingtable,nwt.nwt.table,sizeof(nwt.nwt.table));
-				unsigned char sndr = nwt.nwt.SendersID;
+				unsigned char sndr = nwt.nwt.senderID;
 				/*sending broadcast msg*/
-				nwt.nwt.SendersID = me->myID; 
-				nwt.nwt.SendersInbox = me->myInboxID;			
+				nwt.nwt.senderID = me->myID; 
+				nwt.nwt.sendersInboxId = me->myInboxId;			
 				for(unsigned char i=0;i<MAX_TOWERS;i++) {
 					if(i != sndr && me->algoinfo.neighbours[i] !=0){
 						sendTableUpdatepacket(&nwt,me->algoinfo.neighbours[i]);
 					}						
 				}
-			}
-			int sndrid = nwt.nwt.SendersInboxID;
-			
-			nwt.nwt.ack = 1;
-			nwt.nwt.SendersID = me->myID; 
-			nwt.nwt.SendersInbox = me->myInboxID;			
-			sendTableUpdatepacket(&nwt,sndrid);
-		}			
+			}			
+		}
 	}
 	
-	//readReliabilitypacket(&rel,me->myInboxID);
 	
-	readJoinpacket(&join,me->myInboxID);
-	if(join.messagetype = JOIN) {
-		if(join.join.ack ==0) {
-			LOGD("Friends are darn late in respoding .... idiots !!! chuck them \n");
+	readJoinpacket(&join,me->myInboxId);
+	if(join.messagetype == JOIN) {
+		if(join.join.ack == 0) {
+			LOGD("Friends are darn late in responding .... idiots !!! chuck them \n");
 		} else {
-				int sndr = join.join.SendersInboxID;
+				int sndrid = join.join.sendersInboxId;
 				/*sending broadcast msg*/
-				join.join.SendersID = me->myID; 
-				join.join.SendersInbox = me->myInboxID;	
+				join.join.senderID = me->myID; 
+				join.join.sendersInboxId = me->myInboxId;	
 				memcpy(join.join.table,me->algoinfo.routingtable,sizeof(join.join.table));
 				sendJoinpacket(&join,sndrid);	
 		}
 		
 	}
-	
-	/*Check pendingAck*/	
-	messagerepo(CHECKANDSEND);
-	/**/
-	
-	
 }
 
 
-
+/*you may join different parts of the network*/
+void mergetable(double rcvdtable[MAX_TOWERS][MAX_TOWERS],Tower* me,int senderID) {
+	for(int i=0;i<MAX_TOWERS;i++)
+		for(int j=0;j<MAX_TOWERS;j++){
+			if(rcvdtable[i][j]!=0)
+				me->algoinfo.routingtable[i][j] = rcvdtable[i][j];
+		if(i>j)
+			assert(me->algoinfo.routingtable[i][j] == me->algoinfo.routingtable[j][i]);
+		}
+		me->algoinfo.routingtable[me->myID][senderID] = me->algoinfo.routingtable[senderID][me->myID] = 1;
+}

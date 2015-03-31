@@ -1,5 +1,9 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
+
+
+#define AVGRTT_PER_TOWER 10
+
 /*NJOIN*/
 struct  message_join_buf
 {
