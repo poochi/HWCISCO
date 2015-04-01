@@ -16,7 +16,6 @@ To brush up my knowledge in networking :-)
 ##      Project health
 ---------------------------------------------------
 
-Currently, Non Functional :( <br>
 Aiming for a strongly consistent network aware LinkState protocol for networkupdate <br>
 
 ##      How to use
